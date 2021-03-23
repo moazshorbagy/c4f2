@@ -15,7 +15,7 @@ from Agent import Agent
 from sumo_utils import run_episode
 from gen_sim import gen_sim
 
-NUM_EPISODES = 2  # Number of complete simulation runs
+NUM_EPISODES = 600  # Number of complete simulation runs
 COMPETITION_ROUND = 1  # 1 or 2, depending on which competition round you are in
 random.seed(COMPETITION_ROUND)
 
@@ -34,10 +34,10 @@ if __name__ == "__main__":
 
     print('Starting Sumo...')
     # The normal way to start sumo on the CLI
-    sumoBinary = checkBinary('sumo')
+    #sumoBinary = checkBinary('sumo')
     # comment the line above and uncomment the following one to instantiate the simulation with the GUI
 
-    # sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo-gui')
 
     agent = Agent()  # Instantiate your agent object
     waiting_time_per_episode = []  # A list to hold the average waiting time per vehicle returned from every episode
