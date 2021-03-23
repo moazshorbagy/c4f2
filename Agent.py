@@ -34,9 +34,9 @@ class Agent:
         else:
             self.reward_memory = np.zeros(self.mem_size, dtype=np.float32)
         #self.waiting_time_memory = np.zeros(self.mem_size, dtype=np.float32)
-        self.terminal_memory = np.zeros(self.mem_size, dtype=np.bool)
+        #self.terminal_memory = np.zeros(self.mem_size, dtype=np.bool)
 
-    def store_transitions(self, state, action, reward, state_, done):
+    def store_transitions(self, state, action, reward, state_):
         index = self.mem_cntr % self.mem_size
 
         states = open("data/states.txt", "a")
@@ -62,7 +62,7 @@ class Agent:
         self.action_memory[index] = action
         np.savetxt(actions, np.array([action]))
 
-        self.terminal_memory[index] = done
+        #self.terminal_memory[index] = done
         self.mem_cntr += 1
 
     def learn(self):
@@ -78,13 +78,13 @@ class Agent:
         state_batch = T.tensor(self.state_memory[batch]).to(self.Q_eval.device)
         new_state_batch = T.tensor(self.new_state_memory[batch]).to(self.Q_eval.device)
         reward_batch = T.tensor(self.reward_memory[batch]).to(self.Q_eval.device)
-        terminal_batch = T.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
+        #terminal_batch = T.tensor(self.terminal_memory[batch]).to(self.Q_eval.device)
 
         action_batch = self.action_memory[batch]
 
         q_eval = self.Q_eval.forward(state_batch)[batch_index, action_batch]
         q_next = self.Q_eval.forward(new_state_batch)
-        q_next[terminal_batch] = 0.0
+        #q_next[terminal_batch] = 0.0
 
         q_target = reward_batch + self.gamma * T.max(q_next, dim=1)[0]
 
