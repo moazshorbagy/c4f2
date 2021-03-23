@@ -266,13 +266,15 @@ def run_episode(conn, agent, competition_round, train=True):
                       + conn.lane.getLastStepVehicleIDs("3i_0")
         if agent is not None:
             if train:
-                action = agent.select_action(state, conn, vehicle_ids)
+                action = agent.predict_action(state, conn, vehicle_ids)
             else:
-                action = agent.select_action(state)
+                action = agent.predict_action(state)
+
             if action not in range(0, 2):
                 print("Agent returned an invalid action")
             cur_waiting_time, elapsed, emissions = take_action(conn, state, action, competition_round)
             next_state = get_state(conn, competition_round)
+            prev_state = state
             state = next_state
         else:
             cur_waiting_time = get_waiting_count(conn, vehicle_ids)
@@ -280,10 +282,20 @@ def run_episode(conn, agent, competition_round, train=True):
             elapsed = 1
             conn.simulationStep()
             next_state = get_state(conn, competition_round)
+            prev_state = state
             state = next_state
+
+        if len(waiting_times) == 0:
+            reward = -cur_waiting_time
+        else:
+            reward = waiting_times[-1] - cur_waiting_time
+        agent.store_transitions(prev_state, action, reward, state, False)
+        agent.learn()
+
         total_waiting_time += cur_waiting_time
         total_emissions += emissions
         waiting_times.append(cur_waiting_time)
+
         step += elapsed
     conn.close()
     return total_waiting_time, waiting_times, total_emissions
