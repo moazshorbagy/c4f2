@@ -1,3 +1,4 @@
+import torch as T
 YELLOW_TIME = 6
 HOLD_TIME = 6
 MAX_STEP_COUNT = 1000
@@ -251,6 +252,7 @@ def run_episode(conn, agent, competition_round, train=True):
                             len(waiting_times) = # of actions taken
                             by the agent in the current episode
     """
+
     step = 0
     # we start with phase 2 where EW has green
     conn.trafficlight.setPhase("0", 2)
@@ -267,6 +269,9 @@ def run_episode(conn, agent, competition_round, train=True):
                       + conn.lane.getLastStepVehicleIDs("3i_0")
         if agent is not None:
             if train:
+                for name, param in agent.Q_eval.named_parameters():
+                    param.requires_grad = True
+
                 action = agent.predict_action(state, conn, vehicle_ids)
             else:
                 action = agent.predict_action(state)
@@ -298,5 +303,6 @@ def run_episode(conn, agent, competition_round, train=True):
         waiting_times.append(cur_waiting_time)
         prev_atwt = get_total_accumulated_waiting_time(conn, vehicle_ids)
         step += elapsed
+    T.save(agent.Q_eval.state_dict(), "weights.pth")
     conn.close()
     return total_waiting_time, waiting_times, total_emissions

@@ -16,6 +16,8 @@ class Agent:
         self.mem_cntr = 0
 
         self.Q_eval = DQN(self.lr, n_actions=n_actions, input_dims=input_dims, fc1_dims=256, fc2_dims=256)
+        if path.exists("weights.pth"):
+            self.Q_eval.load_state_dict(T.load("weights.pth"))
 
         if path.exists("data/states.txt"):
             self.state_memory = np.loadtxt("data/states.txt", dtype=np.int32).reshape(self.mem_size, *input_dims)
