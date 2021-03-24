@@ -233,12 +233,13 @@ def take_action(conn, state, action, competition_round):
 
 
 # client testing framework
-def run_episode(conn, agent, competition_round, train=True):
+def run_episode(conn, agent, competition_round, prev_atwt, train=True):
     """
 
     :param conn: The simulation connection environment
     :param agent: The action-taking agent object
     :param competition_round: the current competition round (1 or 2)
+    :param prev_atwt: previous accumulated total waiting time
     :param train: train or test flag
             train is True:
                 Agent's select_action method has access to 'vehicle_ids'
@@ -260,7 +261,7 @@ def run_episode(conn, agent, competition_round, train=True):
     total_emissions = 0
     state = get_state(conn, competition_round)
     waiting_times = []
-    prev_atwt = 0
+
     # Start simulation
     while conn.simulation.getMinExpectedNumber() > 0 and step <= MAX_STEP_COUNT:
         vehicle_ids = conn.lane.getLastStepVehicleIDs("1i_0") \
@@ -293,6 +294,7 @@ def run_episode(conn, agent, competition_round, train=True):
 
         #if len(waiting_times) == 0:
         reward = prev_atwt - get_total_accumulated_waiting_time(conn, vehicle_ids)
+
         #else:
             #reward = waiting_times[-1] - cur_waiting_time
         agent.store_transitions(prev_state, action, reward, state)
@@ -303,6 +305,6 @@ def run_episode(conn, agent, competition_round, train=True):
         waiting_times.append(cur_waiting_time)
         prev_atwt = get_total_accumulated_waiting_time(conn, vehicle_ids)
         step += elapsed
-    T.save(agent.Q_eval.state_dict(), "weights.pth")
+    T.save(agent.Q_eval.state_dict(), "weights1.pth")
     conn.close()
-    return total_waiting_time, waiting_times, total_emissions
+    return total_waiting_time, waiting_times, total_emissions, prev_atwt
