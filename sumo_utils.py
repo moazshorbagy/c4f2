@@ -1,8 +1,22 @@
 import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from team_utils import State_Buffer
 YELLOW_TIME = 6
 HOLD_TIME = 6
 MAX_STEP_COUNT = 1000
 CENSOR_PROBABILITY = 0.1
+num_inputs = 9
+num_actions = 2
+num_hidden = 128
+optimizer = keras.optimizers.Adam(learning_rate=0.0001)
+huber_loss = keras.losses.Huber()
+action_probs_history = []
+critic_value_history = []
+rewards_history = []
+running_reward = 0
+gamma = .8
 def make_epsilon_greedy_policy(estimator, epsilon, nA):   
     def policy_fn(observation):
         A = np.ones(nA, dtype=float) * epsilon / nA
@@ -191,7 +205,7 @@ def take_action(conn, state, action, competition_round):
 
 
     """
-
+    
     curr_action = state[0]
     # HOLD_TIME = the minimum time between traffic color switches.
     # A green light cannot switch to yellow unless HOLD_TIME has passed.
@@ -259,11 +273,7 @@ def run_episode(conn, agent, competition_round,eps ,train=True):
                             len(waiting_times) = # of actions taken
                             by the agent in the current episode
     """
-    discount_factor=.9
-    epsilon=0.1
-    epsilon_decay=0.9
-    policy = make_epsilon_greedy_policy(
-            agent, epsilon * epsilon_decay**eps, 2)
+    buffer=State_Buffer(size=2,n_features=11)
     
     step = 0
     # we start with phase 2 where EW has green
@@ -271,46 +281,111 @@ def run_episode(conn, agent, competition_round,eps ,train=True):
     total_waiting_time = 0
     total_emissions = 0
     state = get_state(conn, competition_round)
+    episode_reward=0
     waiting_times = []
     # Start simulation
-    while conn.simulation.getMinExpectedNumber() > 0 and step <= MAX_STEP_COUNT:
-        vehicle_ids = conn.lane.getLastStepVehicleIDs("1i_0") \
-                      + conn.lane.getLastStepVehicleIDs("2i_0") \
-                      + conn.lane.getLastStepVehicleIDs("4i_0") \
-                      + conn.lane.getLastStepVehicleIDs("3i_0")
-        if agent is not None:
-            # if train:
-            #     action = agent.select_action(state, conn, vehicle_ids)
-            # else:
-            #     action = agent.select_action(state)
-            # if action not in range(0, 2):
-            #     print("Agent returned an invalid action")
-            action_probs = policy(state)
-            awt1=get_total_accumulated_waiting_time(conn,vehicle_ids)
-            action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
-            
-            cur_waiting_time, elapsed, emissions = take_action(conn, state, action, competition_round)
-            next_state = get_state(conn, competition_round)
-            #update estimator
-            awt2=get_total_accumulated_waiting_time(conn,vehicle_ids)
+    with tf.GradientTape() as tape:
 
-            # reward=100/(cur_waiting_time+1)
-            reward=awt1-awt2
-            q_values_next = agent.predict(next_state)
-            td_target = reward/elapsed + discount_factor * np.max(q_values_next)
-            agent.update(state, action, td_target)
+        while conn.simulation.getMinExpectedNumber() > 0 and step <= MAX_STEP_COUNT:
+            vehicle_ids = conn.lane.getLastStepVehicleIDs("1i_0") \
+                        + conn.lane.getLastStepVehicleIDs("2i_0") \
+                        + conn.lane.getLastStepVehicleIDs("4i_0") \
+                        + conn.lane.getLastStepVehicleIDs("3i_0")
+            if agent is not None:
+                # if train:
+                #     action = agent.select_action(state, conn, vehicle_ids)
+                # else:
+                #     action = agent.select_action(state)
+                # if action not in range(0, 2):
+                #     print("Agent returned an invalid action")
+                state_nochange=state
+                buffer.add_state(state)
+                state=np.array(buffer.get_states(),dtype=np.float32)
+                state = tf.convert_to_tensor(state)
+                state = tf.expand_dims(state, 0)
+                awt1=get_total_waiting_time(conn,vehicle_ids)
+                mv1=get_total_co2(conn,vehicle_ids)
+                # from environment state
+                action_probs, critic_value = agent.model(state)
+                critic_value_history.append(critic_value[0, 0])
 
-            state = next_state
-        else:
-            cur_waiting_time = get_waiting_count(conn, vehicle_ids)
-            emissions = get_total_co2(conn, vehicle_ids)
-            elapsed = 1
-            conn.simulationStep()
-            next_state = get_state(conn, competition_round)
-            state = next_state
-        total_waiting_time += cur_waiting_time
-        total_emissions += emissions
-        waiting_times.append(cur_waiting_time)
-        step += elapsed
+                # Sample action from action probability distribution
+
+                action = np.random.choice(num_actions, p=np.squeeze(action_probs))
+                action_probs_history.append(tf.math.log(action_probs[0, action]))
+                
+                cur_waiting_time, elapsed, emissions = take_action(conn, state_nochange, action, competition_round)
+                next_state = get_state(conn, competition_round)
+                #update estimator
+                awt2=get_total_accumulated_waiting_time(conn,vehicle_ids)
+                mv2=get_total_co2(conn,vehicle_ids)
+                reward=mv1-mv2
+                # reward=100/(cur_waiting_time+1)
+                # reward=awt1-awt2
+                rewards_history.append(reward)
+                episode_reward += reward
+                state = next_state
+
+                
+            else:
+                cur_waiting_time = get_waiting_count(conn, vehicle_ids)
+                emissions = get_total_co2(conn, vehicle_ids)
+                elapsed = 1
+                conn.simulationStep()
+                next_state = get_state(conn, competition_round)
+                state = next_state
+            total_waiting_time += cur_waiting_time
+            total_emissions += emissions
+            waiting_times.append(cur_waiting_time)
+            step += elapsed
+                # Update running reward to check condition for solving
+        # running_reward = 0.05 * episode_reward + (1 - 0.05) * running_reward
+
+        # Calculate expected value from rewards
+        # - At each timestep what was the total reward received after that timestep
+        # - Rewards in the past are discounted by multiplying them with gamma
+        # - These are the labels for our critic
+        returns = []
+        discounted_sum = 0
+        for r in rewards_history[::-1]:
+            discounted_sum = r + gamma * discounted_sum
+            returns.insert(0, discounted_sum)
+
+        # Normalize
+        returns = np.array(returns)
+        returns = (returns - np.mean(returns)) / (np.std(returns) + eps)
+        returns = returns.tolist()
+
+        # Calculating loss values to update our network
+        history = zip(action_probs_history, critic_value_history, returns)
+        actor_losses = []
+        critic_losses = []
+        for log_prob, value, ret in history:
+            # At this point in history, the critic estimated that we would get a
+            # total reward = `value` in the future. We took an action with log probability
+            # of `log_prob` and ended up recieving a total reward = `ret`.
+            # The actor must be updated so that it predicts an action that leads to
+            # high rewards (compared to critic's estimate) with high probability.
+            diff = ret - value
+            actor_losses.append(-log_prob * diff)  # actor loss
+
+            # The critic must be updated so that it predicts a better estimate of
+            # the future rewards.
+            critic_losses.append(
+                huber_loss(tf.expand_dims(value, 0), tf.expand_dims(ret, 0))
+            )
+
+        # Backpropagation
+        loss_value = sum(actor_losses) + sum(critic_losses)
+        grads = tape.gradient(loss_value, agent.model.trainable_variables)
+        optimizer.apply_gradients(zip(grads, agent.model.trainable_variables))
+
+        # Clear the loss and reward history
+        action_probs_history.clear()
+        critic_value_history.clear()
+        rewards_history.clear()
+        if eps % 10 == 0:
+            template = "running reward: {:.2f} at episode {}"
+            print(template.format(running_reward, eps))
     conn.close()
-    return total_waiting_time, waiting_times, total_emissions
+    return total_waiting_time, waiting_times, total_emissions,episode_reward

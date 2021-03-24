@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 03/23/21 12:39:46 by Eclipse SUMO sumo Version 1.8.0
+<!-- generated on 03/24/21 12:53:14 by Eclipse SUMO sumo Version 1.8.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
@@ -27,7 +27,7 @@
     </report>
 
     <traci_server>
-        <remote-port value="51402"/>
+        <remote-port value="56002"/>
     </traci_server>
 
     <gui_only>
@@ -41,18 +41,5 @@
 
 <detector xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/det_e1_file.xsd">
     <interval begin="0.00" end="30.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="30.00" end="60.00" id="1" nVehContrib="0" flow="0.00" occupancy="40.67" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="1"/>
-    <interval begin="60.00" end="90.00" id="1" nVehContrib="4" flow="480.00" occupancy="74.05" speed="1.52" harmonicMeanSpeed="0.58" length="5.00" nVehEntered="3"/>
-    <interval begin="90.00" end="120.00" id="1" nVehContrib="3" flow="360.00" occupancy="69.85" speed="2.23" harmonicMeanSpeed="0.73" length="5.00" nVehEntered="4"/>
-    <interval begin="120.00" end="150.00" id="1" nVehContrib="2" flow="240.00" occupancy="84.59" speed="1.47" harmonicMeanSpeed="0.47" length="5.00" nVehEntered="2"/>
-    <interval begin="150.00" end="180.00" id="1" nVehContrib="2" flow="240.00" occupancy="84.84" speed="1.42" harmonicMeanSpeed="0.51" length="5.00" nVehEntered="2"/>
-    <interval begin="180.00" end="210.00" id="1" nVehContrib="1" flow="120.00" occupancy="90.60" speed="0.28" harmonicMeanSpeed="0.28" length="5.00" nVehEntered="1"/>
-    <interval begin="210.00" end="240.00" id="1" nVehContrib="2" flow="240.00" occupancy="69.57" speed="0.25" harmonicMeanSpeed="0.25" length="5.00" nVehEntered="1"/>
-    <interval begin="240.00" end="270.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="270.00" end="300.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="300.00" end="330.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="330.00" end="360.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="360.00" end="390.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="390.00" end="420.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
-    <interval begin="420.00" end="432.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
+    <interval begin="30.00" end="60.00" id="1" nVehContrib="0" flow="0.00" occupancy="0.00" speed="-1.00" harmonicMeanSpeed="-1.00" length="-1.00" nVehEntered="0"/>
 </detector>

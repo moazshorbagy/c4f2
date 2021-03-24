@@ -16,12 +16,10 @@ from sumo_utils import run_episode
 from gen_sim import gen_sim
 import numpy as np
 import pandas as pd
-NUM_EPISODES = 200  # Number of complete simulation runs
+NUM_EPISODES =200  # Number of complete simulation runs
 COMPETITION_ROUND = 1  # 1 or 2, depending on which competition round you are in
 random.seed(COMPETITION_ROUND)
-import sklearn
 
-print('The nltk version is {}.'.format(sklearn.__version__))
 """
 state = [curr_open_dir, 8*detector(waiting times)]
 Where:
@@ -44,15 +42,20 @@ if __name__ == "__main__":
 
     agent = Agent()  # Instantiate your agent object
     waiting_time_per_episode = []  # A list to hold the average waiting time per vehicle returned from every episode
+    rewards=[]
     for e in range(NUM_EPISODES):
         # Generate an episode with the specified probabilities for lanes in the intersection
         # Returns the number of vehicles that will be generated in the episode
+        # vehicles = gen_sim('', round=COMPETITION_ROUND,
+        #                    p_west_east=0.5, p_east_west=0.5,
+        #                    p_north_south=0.4, p_south_north=0.2)
+        probs=np.random.random_sample((4,))
         vehicles = gen_sim('', round=COMPETITION_ROUND,
-                           p_west_east=0.5, p_east_west=0.5,
-                           p_north_south=0.4, p_south_north=0.2)
+                           p_west_east=.5, p_east_west=0,
+                           p_north_south=0.2, p_south_north=0)
         # vehicles = gen_sim('', round=COMPETITION_ROUND,
         #                    p_west_east=np.random.choice([.3,.7],p=[.5,.5]), p_east_west=np.random.choice([.2,.8],p=[.5,.5]),
-        #                    p_north_south=np.random.choice([.2,.6],p=[.5,.5]), p_south_north=0.1)
+        #                    p_north_south=np.random.choice([.2,.6],p=[.5,.5]), p_south_north=np.random.choice([.1,.9],p=[.5,.5]))
         print('Starting Episode ' + str(e) + '...')
 
         # this is the normal way of using traci. sumo is started as a
@@ -64,7 +67,7 @@ if __name__ == "__main__":
         conn = traci.getConnection("contestant")
         # Run a complete simulation episode with the agent taking actions for as long as the episode lasts.
         # An episode lasts as long as there are cars in the simulation AND the time passed < 1000 seconds
-        total_waiting_time, waiting_times, total_emissions = run_episode(conn, agent, COMPETITION_ROUND,e)
+        total_waiting_time, waiting_times, total_emissions,reward = run_episode(conn, agent, COMPETITION_ROUND,e)
         # Cleaning up TraCi environments
         traci.switch("contestant")
         traci.close()
@@ -72,9 +75,11 @@ if __name__ == "__main__":
         avg_waiting_time = total_waiting_time / vehicles
         avg_emissions = total_emissions / (1000 * vehicles)
         waiting_time_per_episode.append(avg_waiting_time)
-
-        print('episode[' + str(e) + '] Average waiting time = ' + str(avg_waiting_time)
-              + ' (s) -- Average Emissions (CO2) = ' + str(avg_emissions) + "(g)")
+        rewards.append(reward)
+        print('episode[' + str(e) + '] AWT = ' + str(avg_waiting_time)
+              + ' (s) -- A(CO2) = ' + str(avg_emissions) + "(g)"+'reward= '+str(reward))
     print('average waiting time total: ',np.mean(waiting_time_per_episode))
-    plt.scatter(np.arange(len(waiting_time_per_episode)),waiting_time_per_episode)
+    plt.plot(np.arange(len(rewards)),rewards)
+    plt.show()
+    plt.plot(np.arange(len(waiting_time_per_episode)),waiting_time_per_episode)
     plt.show()
