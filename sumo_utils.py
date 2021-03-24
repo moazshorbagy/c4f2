@@ -274,7 +274,7 @@ def run_episode(conn, agent, competition_round, train=True):
 
                 action = agent.predict_action(state, conn, vehicle_ids)
             else:
-                action = agent.predict_action(state)
+                action = agent.select_action(state)
 
             if action not in range(0, 2):
                 print("Agent returned an invalid action")
