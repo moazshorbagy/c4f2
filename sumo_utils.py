@@ -1,3 +1,4 @@
+import torch as T
 YELLOW_TIME = 6
 HOLD_TIME = 6
 MAX_STEP_COUNT = 1000
@@ -232,12 +233,13 @@ def take_action(conn, state, action, competition_round):
 
 
 # client testing framework
-def run_episode(conn, agent, competition_round, train=True):
+def run_episode(conn, agent, competition_round, prev_atwt, train=True):
     """
 
     :param conn: The simulation connection environment
     :param agent: The action-taking agent object
     :param competition_round: the current competition round (1 or 2)
+    :param prev_atwt: previous accumulated total waiting time
     :param train: train or test flag
             train is True:
                 Agent's select_action method has access to 'vehicle_ids'
@@ -251,6 +253,7 @@ def run_episode(conn, agent, competition_round, train=True):
                             len(waiting_times) = # of actions taken
                             by the agent in the current episode
     """
+
     step = 0
     # we start with phase 2 where EW has green
     conn.trafficlight.setPhase("0", 2)
@@ -258,6 +261,7 @@ def run_episode(conn, agent, competition_round, train=True):
     total_emissions = 0
     state = get_state(conn, competition_round)
     waiting_times = []
+
     # Start simulation
     while conn.simulation.getMinExpectedNumber() > 0 and step <= MAX_STEP_COUNT:
         vehicle_ids = conn.lane.getLastStepVehicleIDs("1i_0") \
@@ -266,13 +270,18 @@ def run_episode(conn, agent, competition_round, train=True):
                       + conn.lane.getLastStepVehicleIDs("3i_0")
         if agent is not None:
             if train:
-                action = agent.select_action(state, conn, vehicle_ids)
+                for name, param in agent.Q_eval.named_parameters():
+                    param.requires_grad = True
+
+                action = agent.predict_action(state, conn, vehicle_ids)
             else:
                 action = agent.select_action(state)
+
             if action not in range(0, 2):
                 print("Agent returned an invalid action")
             cur_waiting_time, elapsed, emissions = take_action(conn, state, action, competition_round)
             next_state = get_state(conn, competition_round)
+            prev_state = state
             state = next_state
         else:
             cur_waiting_time = get_waiting_count(conn, vehicle_ids)
@@ -280,10 +289,22 @@ def run_episode(conn, agent, competition_round, train=True):
             elapsed = 1
             conn.simulationStep()
             next_state = get_state(conn, competition_round)
+            prev_state = state
             state = next_state
+
+        #if len(waiting_times) == 0:
+        reward = prev_atwt - get_total_accumulated_waiting_time(conn, vehicle_ids)
+
+        #else:
+            #reward = waiting_times[-1] - cur_waiting_time
+        agent.store_transitions(prev_state, action, reward, state)
+        agent.learn()
+
         total_waiting_time += cur_waiting_time
         total_emissions += emissions
         waiting_times.append(cur_waiting_time)
+        prev_atwt = get_total_accumulated_waiting_time(conn, vehicle_ids)
         step += elapsed
+    T.save(agent.Q_eval.state_dict(), "weights1.pth")
     conn.close()
-    return total_waiting_time, waiting_times, total_emissions
+    return total_waiting_time, waiting_times, total_emissions, prev_atwt
